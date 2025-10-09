@@ -1,0 +1,51 @@
+M1 Informatique
+Intelligence Artificielle
+Projet
+Système Expert
+
+On désire écrire un programme réalisant des tâches d’expertises dans un domaine d’application tel que la
+météorologie, le dépannage automobile, la conception de mécanismes, ou tout autre domaine qui vous semble
+justifier l’utilisation d’un système à bases de règles de production pour réaliser des inférences.
+
+Pour ce faire, le domaine ayant été choisi, vous définirez un système expert essentiel (au sens ou il pourra être
+utilisé pour d’autres applications similaires à celle qui vous aura aidé à le définir).
+
+Après avoir défini votre langage de représentation des connaissances, vous programmerez un moteur
+d’inférences d’ordre Zero+ au minimum adapté à votre application. Vous le doterez de possibilités le rendant
+plus efficace, plus souple à utiliser ou plus sûr. Par exemple :
+
+1) Implémentation de différentes stratégies d’exploitation des règles
+-  chaînage avant
+-  chaînage arrière
+- groupement des règles par paquets et déclenchement des paquets selon un certain ordre, l’ordre au sein
+de chaque paquet étant indifférent
+Pour chaque stratégie, vous indiquerez, s’il y a lieu, les conséquences de son implémentation sur le langage
+d'expression des connaissances ainsi que ses conditions d’activation.
+
+2) Utilisation de différents critères de choix de la règle déclenchée dans l’ensemble des conflits (ie. Ensemble
+des règles déclenchables ou susceptibles d’être choisies pour développer un but)
+- régles ayant le plus de prémisses à satisfaire
+- règle comportant comme prémisses les faits déduits les plus récents
+
+{
+
+3) Gestion de la cohérence. Vous définirez des critères définissant la cohérence de la base de connaissances et
+les utiliserez pour contrôler la base de connaissances et le fonctionnement du système.
+
+n
+
+4) Possibilité de fournir des explications
+- à la demande de l’utilisateur
+- en cas de problèmes"
+- explication sous forme de traces
+- explication sous forme de traces abrégées
+- explication à partir d'informations complémentaires ajoutées préalablement aux règles
+
+Notes :
+
+- Le travail est à réaliser par binôme.
+
+- Le choix du langage est laissé libre.
+
+- Ne soyez pas trop ambitieux dans les choix que vous implémenterez de façon à rendre un programme qui
+tourne
