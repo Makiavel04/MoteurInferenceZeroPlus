@@ -1,0 +1,29 @@
+{
+  "faits" : {
+    "attribut1" : "val1",
+    "attribut2" : "val2"
+  },
+
+  "règles" : [
+    {
+      "id" :  "R1",
+      "conditions" : {
+        "bouton_power": "allumé"
+      },
+      "conclusion" : {
+        "power": "on"
+      }
+    },
+    {
+      "id" :  "R2",
+      "conditions" : {
+        "power": "on",
+        "ventilateur" : "allumé",
+        "température" : "élevée"
+      },
+      "conclusion" : {
+        "problème": "surchauffe"
+      }
+    }
+  ]
+}
