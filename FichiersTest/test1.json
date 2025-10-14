@@ -1,7 +1,8 @@
 {
   "faits" : {
-    "attribut1" : "val1",
-    "attribut2" : "val2"
+    "bouton_power" : "allumé",
+    "ventilateur" : "éteint",
+    "température" : "élevée"
   },
 
   "règles" : [
@@ -11,14 +12,14 @@
         "bouton_power": "allumé"
       },
       "conclusion" : {
-        "power": "on"
+        "power": "off"
       }
     },
     {
       "id" :  "R2",
       "conditions" : {
         "power": "on",
-        "ventilateur" : "allumé",
+        "ventilateur" : "éteint",
         "température" : "élevée"
       },
       "conclusion" : {
