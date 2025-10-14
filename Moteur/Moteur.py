@@ -33,7 +33,7 @@ def regles_utilisables_chainage_avant(base_regles : dict, base_faits :dict):
 
     return regles_eligibles
 
-def chainage_avant_largeur(base_regles : dict, base_faits :dict):
+def chainage_avant_largeur(base_regles : dict, base_faits :dict, trace : bool = False):
     """
     Résolution par chaînage avant en largeur
     
@@ -45,18 +45,33 @@ def chainage_avant_largeur(base_regles : dict, base_faits :dict):
     br = base_regles
     regles_eligibles = regles_utilisables_chainage_avant(br, bf)
 
+    tour = 1
 
     while br and regles_eligibles: #tant qu'il reste des règles à appliquer
         #tri des règles
+
+        if trace :
+            print("Tour", tour,
+                  "\nRègles applicables :",regles_eligibles,
+                  "\nBase de faits courantes :", bf,
+                  "\nRègles disponibles :", br)
+
         for regle in regles_eligibles:
+            if trace : print("Ajout des faits par application de", regle," : ", end="")
+
             #appliquer regle et mettre à jour la base de fait
             for fait, val in br.get(regle).get("conclusion").items() :
                 bf[fait] = val### à l'ajout de conséquence dans base de fait, on peut verif si existe deja et transformer en liste de val ou planter
+                if trace : print("(",fait,":", val, "), ", end="")
 
             #retirer les règles utilisées
             del br[regle]
+            if trace : print()#retour à la ligne
 
         regles_eligibles = regles_utilisables_chainage_avant(br, bf)
+
+        tour +=1
+        if trace : print()#retour à la ligne
 
     return bf
 
@@ -64,11 +79,11 @@ def chainage_avant_largeur(base_regles : dict, base_faits :dict):
 if __name__ == "__main__":
     print("moteur")
 
-    base_faits, base_regles = lireFichierJson("../FichiersTest/test1.json")
+    base_faits, base_regles = lireFichierJson("../FichiersTest/test_plusieursreglepartour.json")
 
     #print("LOG :",base_regles)
 
     #Chaînage avant en largeur
-    print(chainage_avant_largeur(base_regles, base_faits))
+    print(chainage_avant_largeur(base_regles, base_faits, True))
 
 

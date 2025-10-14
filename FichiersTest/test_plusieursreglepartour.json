@@ -25,6 +25,15 @@
       "conclusion" : {
         "problème": "surchauffe"
       }
+    },
+    {
+      "id" :  "R3",
+      "conditions" : {
+        "ventilateur": "éteint"
+      },
+      "conclusion" : {
+        "bah": "il est éteint"
+      }
     }
   ]
 }
