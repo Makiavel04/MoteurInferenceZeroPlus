@@ -16,6 +16,16 @@
       }
     },
     {
+      "id" :  "R1bis",
+      "conditions" : {
+        "ventilateur" : "éteint",
+        "température" : "élevée"
+      },
+      "conclusion" : {
+        "test": "ordre"
+      }
+    },
+    {
       "id" :  "R2",
       "conditions" : {
         "power": "on",
@@ -33,6 +43,15 @@
       },
       "conclusion" : {
         "bah": "il est éteint"
+      }
+    },
+    {
+      "id" :  "R4",
+      "conditions" : {
+        "fait_lumiere": "oui"
+      },
+      "conclusion" : {
+        "power": "on"
       }
     }
   ]
