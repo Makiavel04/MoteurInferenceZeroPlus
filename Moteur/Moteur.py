@@ -249,8 +249,8 @@ def afficher_arbre(arbre, prefix=""):
 
 if __name__ == "__main__":
     try:
-        #cheminVersFichier = input("Chemin vers le fichier json : ")
-        base_regles, base_faits = lireFichierJson("../FichiersTest/test_plusieursreglepartour.json")
+        cheminVersFichier = input("Chemin vers le fichier json : ")
+        base_regles, base_faits = lireFichierJson(cheminVersFichier)
         #print("LOG :",base_regles)
 
         inputTrace = ""
