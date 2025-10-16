@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import copy
 import json
 
 
@@ -151,14 +152,106 @@ def chainage_avant(base_regles : dict, base_faits :dict, strat : str, but : dict
         else : print("résolu")
         return bf, but
 
+###--- CHAINAGE ARRIERE ---###
+def regles_utilisables_car(base_regles : dict, but : dict) :
+    """
+    Liste les règles utilisables pour un tour de chaînage arrière
 
+    :param base_regles: la base de règles
+    :param but: l'objectif à atteindre
+    :return: la liste des règles utilisables pour ce tour
+    """
+    # regles_eligibles = []
+    # for id, regle in base_regles.items():  # Parcours de toutes les règles;
+    #     if regle.get("conclusion").get(but.get("attribut")) == but.get("valeur") :
+    #         regles_eligibles.append(id)
+    #
+    # return regles_eligibles
+    return [id for id, regle in base_regles.items() if regle.get("conclusion").get(but.get("attribut")) == but.get("valeur")]
+
+
+def chainage_arriere(base_regles : dict, base_faits :dict, but : dict, critere_tri :str = "aucun", trace : bool = False) :
+    """
+
+
+    :param base_regles: base de règles initiales
+    :param base_faits: base de faits
+    :param but: objectif à prouver
+    :critère de séléction de règle en cas de conflit
+    :param trace: activer ou désactiver la trace
+    :return: un couple (bool, dict) avec vrai si prouvable et l'arbre de preuve
+    """
+    arbre = {"but": but, "prouvable": False, "enfants": [], "regle": None}
+
+    if base_faits.get(but.get("attribut")) == but.get("valeur") :
+        if trace : print(but.get("attribut"),":",but.get("valeur"),"est dans la base de faits")
+        arbre["prouvable"] = True
+        return True, arbre
+
+    regles_eligibles = regles_utilisables_car(base_regles, but)
+    if not regles_eligibles : #Si pas de règles pour aboutir à ce but et comme déjà verif si dans BF,
+        if trace: print(but.get("attribut"), ":", but.get("valeur"), "n'est pas dans la base et n'est en conclusion d'aucune règle")
+        return False, arbre #On ne peut pas atteindre ce but
+    match critere_tri:
+        case "aucun": pass
+        case "nbpremisses_croiss": regles_eligibles = tri_regles_par_nbpremisses(regles_eligibles, base_regles,False)  # Tri par Nombre de prémisses croissant
+        case "nbpremisses_decroiss": regles_eligibles = tri_regles_par_nbpremisses(regles_eligibles, base_regles,True)  # Tri par Nombre de prémisses décroissant
+        case "premisse_rec": pass  # Tri par prémisses les plus récentes
+        case "premisse_anc": pass  # -------------------------- anciens
+        case _: raise ValueError("Critère de tri inexistant.")
+
+    for idregle in regles_eligibles :
+        #Tri / Critère de résolution de conflits (non def pour l'instant)
+        br = copy.deepcopy(base_regles) #Refait une copie à chaque fois pour en supprimer la règle actuelle
+        conditions = br.get(idregle).get("conditions")
+        del br[idregle]
+        enfants = []  # On initialise les enfants pour cet essai de règle seulement
+
+        #Remonté de la règle
+        prouvable = True
+        for attr, val in conditions.items() :
+            etat, enfant = chainage_arriere(br, base_faits, {"attribut" : attr, "valeur" : val}, critere_tri, trace)
+            enfants.append(enfant)
+            if(etat == False) :#Si une prémisse de la règle n'est pas prouvable, alors la conclusion de la règle ne peut être prouvé avec celle-ci.
+                if trace : print(but.get("attribut"), ":", but.get("valeur"),"n'est pas démontrable par",idregle,"car l'antécédent",attr,":",val,"n'est pas obtenable avec les bases de faits et de règles actuels")
+                prouvable = False
+                break #S'arrête pour cette règle
+
+        if prouvable : #Si toutes les prémisses d'une règle sont prouvables, alors la conclusion l'est aussi
+            if trace : print(but.get("attribut"), ":", but.get("valeur"), "est prouvé par la règle",base_regles.get(idregle))
+            arbre["prouvable"] = True
+            arbre["enfants"] = enfants
+            arbre["regle"] = idregle
+            return True, arbre
+
+    if trace : print(but.get("attribut"), ":", but.get("valeur"), "n'est prouvable par aucune des règles :",regles_eligibles)
+    return False, arbre
+
+def afficher_arbre(arbre, prefix=""):
+    """
+    Affiche un arbre de chaînage arrière de manière graphique.
+
+    :param arbre: dictionnaire {"but": ..., "prouvable": bool, "enfants": [...]}
+    :param prefix: préfixe utilisé pour l'indentation
+    """
+    but = arbre["but"]
+    status = "✔" if arbre["prouvable"] else "✘"
+    regle_info = f" [{arbre['regle']}]" if arbre.get("regle") else ""
+    print(f"{prefix}- {but['attribut']} = {but['valeur']} {status}{regle_info}")
+
+    enfants = arbre.get("enfants", [])
+    for i, enfant in enumerate(enfants):
+        if i == len(enfants) - 1:
+            new_prefix = prefix + "   └─ "
+        else:
+            new_prefix = prefix + "   ├─ "
+        afficher_arbre(enfant, prefix=new_prefix)
 
 if __name__ == "__main__":
     try:
         #cheminVersFichier = input("Chemin vers le fichier json : ")
         base_regles, base_faits = lireFichierJson("../FichiersTest/test_plusieursreglepartour.json")
         #print("LOG :",base_regles)
-        #print(chainage_avant(base_regles, base_faits, 2, critere_tri=1, trace=True))
 
         inputTrace = ""
         while inputTrace not in ["y", "n"]:
@@ -240,12 +333,19 @@ if __name__ == "__main__":
 
             case "arrière" :
                 #Chaînage arrière
-                print("Not implemented : chainage arrière")
+                print("Veuillez donner le nom et la valeur de l'attribut objectif. (Respectez la casse)")
+                attr = input("Nom de l'attribut : ")
+                val = input("Valeur : ")
+                but = {"attribut" : attr, "valeur" : val}
+
+                etat, arbre = chainage_arriere(base_regles, base_faits, but, critere_tri="aucun", trace=trace)
+                if etat : print("Succès")
+                else : print("Échec")
+                afficher_arbre(arbre)
 
             case "paquets" :
-                #Chaînage arrière
+                #paquets
                 print("Not implemented : chainage arrière")
-
     except Exception as e :
         print("Erreur :", e)
 
