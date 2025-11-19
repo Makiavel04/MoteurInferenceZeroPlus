@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import copy
 import json
-
+from collections import OrderedDict
 
 
 
@@ -18,7 +18,58 @@ def lireFichierJson(filename : str) :
     f.close()
     base_faits : dict = data["faits"]
     base_regles : dict = {r["id"] : {k : v for k,v in r.items() if k!="id"} for r in data["règles"]}# Redécoupe le dico en mettant l'id en cle général
+    
     return base_regles,base_faits
+
+
+###--- TRIE BASE DE REGLES ---###
+def trier_regles(base_regles: dict, base_faits: dict, type_tri: str):
+    """
+    Trie les règles et renvoie un dictionnaire trié, même structure que base_regles.
+    """
+
+    # Convertir les règles en liste pour les trier
+    regles_liste = [
+        {"id": rid, 
+         "conditions": r["conditions"], 
+         "conclusion": r["conclusion"]}
+        for rid, r in base_regles.items()
+    ]
+
+    # ----------------------------- TRI 1 : Plus de prémisses -----------------------------
+    if type_tri == "0":
+        regles_liste.sort(key=lambda r: len(r["conditions"]), reverse=True)
+
+    # ----------------------------- TRI 2 : Faits récents -----------------------------
+    elif type_tri == "1":
+        faits_ordonnes = list(base_faits.items())
+        index_fait = {(k, v): i for i, (k, v) in enumerate(faits_ordonnes)}
+
+        def priorite(regle):
+            indices = [
+                index_fait[(fait, val)]
+                for fait, val in regle["conditions"].items()
+                if (fait, val) in index_fait
+            ]
+            return max(indices) if indices else -1
+
+        regles_liste.sort(key=priorite, reverse=True)
+
+    else:
+        raise ValueError(f"Type de tri inconnu : {type_tri}")
+
+    # ----------------------------- RECONSTRUCTION EN DICTIONNAIRE -----------------------------
+    base_regles_triees = OrderedDict()
+
+    for r in regles_liste:
+        base_regles_triees[r["id"]] = {
+            "conditions": r["conditions"],
+            "conclusion": r["conclusion"]
+        }
+
+    return base_regles_triees
+
+
 
 ###--- CHAINAGE AVANT ---###
 def regles_utilisables_cav(base_regles : dict, base_faits :dict):
@@ -246,6 +297,95 @@ def afficher_arbre(arbre, prefix=""):
         else:
             new_prefix = prefix + "   ├─ "
         afficher_arbre(enfant, prefix=new_prefix)
+        
+        
+###--- CHAINAGE PAR PAQUETS ---###
+
+def construire_arbre(base_faits: dict, base_regles: dict):
+    """
+    Construire un arbre de dépendances entre règles.
+    Une règle enfant est liée à un parent si au moins une de ses prémisses
+    correspond à une conséquence du parent.
+    Seules les règles directement applicables (toutes conditions satisfaites par la base de faits) sont racines.
+    """
+
+    def arbre_depuis_regle(reg_id, regles_restantes):
+        arbre = {"Règle": reg_id, "Enfants": []}
+        consequences_parent = regles_restantes[reg_id]["conclusion"]
+
+        for enfant_id, regle in regles_restantes.items():
+            if enfant_id == reg_id:
+                continue
+            conditions_enfant = regle.get("conditions", {})
+            # lien parent -> enfant si au moins une prémisse correspond à une conséquence
+            if any(fait in conditions_enfant and conditions_enfant[fait] == val
+                   for fait, val in consequences_parent.items()):
+                arbre["Enfants"].append(arbre_depuis_regle(enfant_id, regles_restantes))
+
+        return arbre
+
+    # Règles racines : toutes les conditions satisfaites par la base de faits
+    racines = [
+        reg_id for reg_id, regle in base_regles.items()
+        if all(fait in base_faits and base_faits[fait] == val
+               for fait, val in regle.get("conditions", {}).items())
+    ]
+
+    arbre_racine = {"Règle": None, "Enfants": []}
+    for reg_id in racines:
+        arbre_racine["Enfants"].append(arbre_depuis_regle(reg_id, base_regles))
+
+    return arbre_racine
+
+
+
+
+
+def afficher_arbre_regles(arbre, prefix=""):
+    """
+    Affiche l'arbre des règles de manière hiérarchique.
+
+    :param arbre: dictionnaire {"Règle": id, "Enfants": [...]}
+    :param prefix: chaîne pour indentation (utilisée en récursion)
+    """
+    regle = arbre.get("Règle")
+    if regle is None:
+        print(f"{prefix}- Racine")
+    else:
+        print(f"{prefix}- {regle}")
+
+    enfants = arbre.get("Enfants", [])
+    for i, enfant in enumerate(enfants):
+        # Gestion des branches graphiques ├─ et └─
+        if i == len(enfants) - 1:
+            new_prefix = prefix + "   └─ "
+        else:
+            new_prefix = prefix + "   ├─ "
+        afficher_arbre_regles(enfant, prefix=new_prefix)
+
+def afficher_base_regles(base_regles: dict):
+    """
+    Affiche proprement la base de règles sous forme lisible.
+    """
+    print("\n=== BASE DES RÈGLES ===\n")
+
+    for reg_id, reg in base_regles.items():
+        print(f"• {reg_id}")
+        print("   Conditions :")
+
+        if reg["conditions"]:
+            for fait, valeur in reg["conditions"].items():
+                print(f"       - {fait} = {valeur}")
+        else:
+            print("       (aucune)")
+
+        print("   Conclusion :")
+        for fait, valeur in reg["conclusion"].items():
+            print(f"       → {fait} = {valeur}")
+
+        print()  # ligne vide entre les règles
+
+    
 
 if __name__ == "__main__":
     try:
@@ -344,8 +484,15 @@ if __name__ == "__main__":
                 afficher_arbre(arbre)
 
             case "paquets" :
-                #paquets
-                print("Not implemented : chainage arrière")
+                arbrePaquets = construire_arbre(base_faits, base_regles)
+                afficher_arbre_regles(arbrePaquets)
+                afficher_base_regles(base_regles)
+                print("Quel type de trie ? ")
+                inputTrie = input("Quel critère souhaitez-vous appliquer pour la résolution de conflit dans le choix de la règle à explorer ?\n"
+                    "\t0 - Par nombre de prémisses\n"
+                    "\t1 - Par faits déduits les plus récent\n"
+                    "Choix : ")
+                base_regles = trier_regles(base_regles, base_faits, inputTrie)
+                afficher_base_regles(base_regles)
     except Exception as e :
         print("Erreur :", e)
-
