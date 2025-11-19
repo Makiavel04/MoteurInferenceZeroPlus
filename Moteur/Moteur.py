@@ -22,11 +22,9 @@ def lireFichierJson(filename : str) :
     return base_regles,base_faits
 
 
-###--- TRIE BASE DE REGLES ---###
-def trier_regles(base_regles: dict, base_faits: dict, type_tri: str):
-    """
+###--- TRIE DES REGLES ---###
+"""def trier_regles(base_regles: dict, base_faits: dict, type_tri: str):
     Trie les règles et renvoie un dictionnaire trié, même structure que base_regles.
-    """
 
     # Convertir les règles en liste pour les trier
     regles_liste = [
@@ -67,8 +65,43 @@ def trier_regles(base_regles: dict, base_faits: dict, type_tri: str):
             "conclusion": r["conclusion"]
         }
 
-    return base_regles_triees
+    return base_regles_triees"""
 
+def tri_regles_par_anciennete(liste_regles : list, base_faits : dict, base_regles : dict, recent : bool = True):
+    """
+    Tri les règles par ancienneté des prémisses
+
+    :param liste_regles:
+    :param base_faits:
+    :param recent:
+    :return:
+    """
+    #Classe les faits
+    index_faits = list(base_faits.items())
+
+    #Vecteur d'ancienneté des règles
+    vect_regles = dict()
+    for id in liste_regles :
+        conditions = base_regles.get(id).get("conditions")
+        vect = [index_faits.index((attr, val)) for attr, val in conditions.items()]
+        vect.sort(reverse=True)
+        vect_regles[id] = vect
+    print(vect_regles)
+    #Tri par ancienneté
+    print(sorted(liste_regles, key= lambda r : vect_regles.get(r), reverse=recent))
+    return sorted(liste_regles, key= lambda r : vect_regles.get(r), reverse=recent)
+
+
+def tri_regles_par_nbpremisses(liste_regles : list, base_regles : dict, decroissant : bool = False):
+    """
+    Tri des règles selon le nombre de prémisses à satisfaire
+
+    :param liste_regles: regles à trier
+    :param base_regles: base de règles
+    :param decroissant: trier par nombre de prémisses à satisfaire
+    :return: liste de règles triée
+    """
+    return sorted(liste_regles, key= lambda r: len(base_regles[r]["conditions"]), reverse=decroissant)
 
 
 ###--- CHAINAGE AVANT ---###
@@ -84,21 +117,12 @@ def regles_utilisables_cav(base_regles : dict, base_faits :dict):
     for id, regle in base_regles.items() :#Parcours de toutes les règles;
         eligible = True
         for fait, val in regle.get("conditions").items() : #Pour chaque fait en prémisse d'une règle, on vérifie si ce fait a la même valeur dans la base de faits.
-            if base_faits.get(fait) != val : eligible = False
+            if base_faits.get(fait) != val :
+                eligible = False
+                break
         if eligible : regles_eligibles.append(id) #Si tous les prémisses d'une règle sont vérifiés, on ajoute cette règle à celles éligibles.
 
     return regles_eligibles
-
-def tri_regles_par_nbpremisses(liste_regles : list, base_regles : dict, decroissant : bool = False):
-    """
-    Tri des règles selon le nombre de prémisses à satisfaire
-
-    :param liste_regles: regles à trier
-    :param base_regles: base de règles
-    :param decroissant: trier par nombre de prémisses à satisfaire
-    :return: liste de règles triée
-    """
-    return sorted(liste_regles, key= lambda r: len(base_regles[r]["conditions"]), reverse=decroissant)
 
 def appliquer_regle_cav(regle : dict, base_regles :dict, base_faits : dict, trace : bool):
     """
@@ -171,20 +195,20 @@ def chainage_avant(base_regles : dict, base_faits :dict, strat : str, but : dict
 
     while br and regles_eligibles and (but is None or bf.get(but.get("attribut")) != but.get("valeur")): #tant qu'il reste des règles à appliquer ou si on a atteint l'objectif
 
-        if trace:
-            print("Tour", tour,
-                  "\nRègles applicables :", regles_eligibles,
-                  "\nBase de faits courantes :", bf,
-                  "\nRègles disponibles :", br)
-
         #Tri des règles
         match critere_tri :
             case "aucun" : pass
             case "nbpremisses_croiss" : regles_eligibles = tri_regles_par_nbpremisses(regles_eligibles, base_regles, False) #Tri par Nombre de prémisses croissant
             case "nbpremisses_decroiss" : regles_eligibles = tri_regles_par_nbpremisses(regles_eligibles, base_regles, True) #Tri par Nombre de prémisses décroissant
-            case "premisse_rec" : pass #Tri par prémisses les plus récentes
-            case "premisse_anc" : pass #-------------------------- anciens
+            case "premisse_rec" : regles_eligibles = tri_regles_par_anciennete(regles_eligibles, base_faits, base_regles, True) #Tri par prémisses les plus récentes
+            case "premisse_anc" : regles_eligibles = tri_regles_par_anciennete(regles_eligibles, base_faits, base_regles, False) #-------------------------- anciens
             case _ : raise ValueError("Critère de tri inexistant.")
+
+        if trace:
+            print("Tour", tour,
+                  "\nRègles applicables :", regles_eligibles,
+                  "\nBase de faits courantes :", bf,
+                  "\nRègles disponibles :", br)
 
         # Réaliser le tour
         match strat :
@@ -202,6 +226,8 @@ def chainage_avant(base_regles : dict, base_faits :dict, strat : str, but : dict
         if bf.get(but.get("attribut")) != but.get("valeur") : print("But non atteint")
         else : print("résolu")
         return bf, but
+
+
 
 ###--- CHAINAGE ARRIERE ---###
 def regles_utilisables_car(base_regles : dict, but : dict) :
@@ -247,8 +273,8 @@ def chainage_arriere(base_regles : dict, base_faits :dict, but : dict, critere_t
         case "aucun": pass
         case "nbpremisses_croiss": regles_eligibles = tri_regles_par_nbpremisses(regles_eligibles, base_regles,False)  # Tri par Nombre de prémisses croissant
         case "nbpremisses_decroiss": regles_eligibles = tri_regles_par_nbpremisses(regles_eligibles, base_regles,True)  # Tri par Nombre de prémisses décroissant
-        case "premisse_rec": pass  # Tri par prémisses les plus récentes
-        case "premisse_anc": pass  # -------------------------- anciens
+        case "premisse_rec": regles_eligibles = tri_regles_par_anciennete(regles_eligibles, base_faits, base_regles, True) #Tri par prémisses les plus récentes
+        case "premisse_anc" : regles_eligibles = tri_regles_par_anciennete(regles_eligibles, base_faits, base_regles, False)  # -------------------------- anciens
         case _: raise ValueError("Critère de tri inexistant.")
 
     for idregle in regles_eligibles :
@@ -389,9 +415,9 @@ def afficher_base_regles(base_regles: dict):
 
 if __name__ == "__main__":
     try:
-        cheminVersFichier = input("Chemin vers le fichier json : ")
+        cheminVersFichier = "../FichiersTest/test_ageregle_2cran.json"#input("Chemin vers le fichier json : ")
         base_regles, base_faits = lireFichierJson(cheminVersFichier)
-        #print("LOG :",base_regles)
+        print("LOG :",base_regles, "\n", base_faits)
 
         inputTrace = ""
         while inputTrace not in ["y", "n"]:
@@ -486,13 +512,6 @@ if __name__ == "__main__":
             case "paquets" :
                 arbrePaquets = construire_arbre(base_faits, base_regles)
                 afficher_arbre_regles(arbrePaquets)
-                afficher_base_regles(base_regles)
-                print("Quel type de trie ? ")
-                inputTrie = input("Quel critère souhaitez-vous appliquer pour la résolution de conflit dans le choix de la règle à explorer ?\n"
-                    "\t0 - Par nombre de prémisses\n"
-                    "\t1 - Par faits déduits les plus récent\n"
-                    "Choix : ")
-                base_regles = trier_regles(base_regles, base_faits, inputTrie)
                 afficher_base_regles(base_regles)
     except Exception as e :
         print("Erreur :", e)

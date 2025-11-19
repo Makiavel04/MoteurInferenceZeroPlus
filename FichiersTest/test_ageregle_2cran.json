@@ -1,0 +1,30 @@
+{
+  "faits" : {
+    "attribut2" : "val2",
+    "attribut3": "val3",
+    "attribut1" : "val1"
+  },
+
+  "règles" : [
+    {
+      "id" :  "R1",
+      "conditions" : {
+        "attribut1": "val1",
+        "attribut2": "val2"
+      },
+      "conclusion" : {
+        "attribut4": "val4"
+      }
+    },
+    {
+      "id" :  "R2",
+      "conditions" : {
+        "attribut1": "val1",
+        "attribut4": "val4"
+      },
+      "conclusion" : {
+        "attribut5": "val5"
+      }
+    }
+  ]
+}
