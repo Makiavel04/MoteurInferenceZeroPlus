@@ -6,7 +6,7 @@ from collections import OrderedDict
 
 
 
-def lireFichierJson(filename : str) :
+def lire_fichier_json(filename : str) :
     """
     Lire un fichier .json contenant base de faits et de règles
 
@@ -67,7 +67,7 @@ def lireFichierJson(filename : str) :
 
     return base_regles_triees"""
 
-def tri_regles_par_anciennete(liste_regles : list, base_faits : dict, base_regles : dict, recent : bool = True):
+def tri_regles_par_anciennete(liste_regles : list, base_regles : dict, base_faits : dict, recent : bool = True):
     """
     Tri les règles par ancienneté des prémisses
 
@@ -200,8 +200,8 @@ def chainage_avant(base_regles : dict, base_faits :dict, strat : str, but : dict
             case "aucun" : pass
             case "nbpremisses_croiss" : regles_eligibles = tri_regles_par_nbpremisses(regles_eligibles, base_regles, False) #Tri par Nombre de prémisses croissant
             case "nbpremisses_decroiss" : regles_eligibles = tri_regles_par_nbpremisses(regles_eligibles, base_regles, True) #Tri par Nombre de prémisses décroissant
-            case "premisse_rec" : regles_eligibles = tri_regles_par_anciennete(regles_eligibles, base_faits, base_regles, True) #Tri par prémisses les plus récentes
-            case "premisse_anc" : regles_eligibles = tri_regles_par_anciennete(regles_eligibles, base_faits, base_regles, False) #-------------------------- anciens
+            case "premisse_rec" : regles_eligibles = tri_regles_par_anciennete(regles_eligibles, base_regles, base_faits, True) #Tri par prémisses les plus récentes
+            case "premisse_anc" : regles_eligibles = tri_regles_par_anciennete(regles_eligibles, base_regles, base_faits, False) #-------------------------- anciens
             case _ : raise ValueError("Critère de tri inexistant.")
 
         if trace:
@@ -249,7 +249,7 @@ def regles_utilisables_car(base_regles : dict, but : dict) :
 
 def chainage_arriere(base_regles : dict, base_faits :dict, but : dict, critere_tri :str = "aucun", trace : bool = False) :
     """
-
+    Résolution par chaînage arrière
 
     :param base_regles: base de règles initiales
     :param base_faits: base de faits
@@ -273,8 +273,8 @@ def chainage_arriere(base_regles : dict, base_faits :dict, but : dict, critere_t
         case "aucun": pass
         case "nbpremisses_croiss": regles_eligibles = tri_regles_par_nbpremisses(regles_eligibles, base_regles,False)  # Tri par Nombre de prémisses croissant
         case "nbpremisses_decroiss": regles_eligibles = tri_regles_par_nbpremisses(regles_eligibles, base_regles,True)  # Tri par Nombre de prémisses décroissant
-        case "premisse_rec": regles_eligibles = tri_regles_par_anciennete(regles_eligibles, base_faits, base_regles, True) #Tri par prémisses les plus récentes
-        case "premisse_anc" : regles_eligibles = tri_regles_par_anciennete(regles_eligibles, base_faits, base_regles, False)  # -------------------------- anciens
+        case "premisse_rec": regles_eligibles = tri_regles_par_anciennete(regles_eligibles, base_regles, base_faits, True) #Tri par prémisses les plus récentes
+        case "premisse_anc" : regles_eligibles = tri_regles_par_anciennete(regles_eligibles, base_regles, base_faits, False)  # -------------------------- anciens
         case _: raise ValueError("Critère de tri inexistant.")
 
     for idregle in regles_eligibles :
@@ -411,13 +411,131 @@ def afficher_base_regles(base_regles: dict):
 
         print()  # ligne vide entre les règles
 
-    
 
+
+def recuperer_predecesseurs(base_regles :dict, trace : bool):
+    """
+    Créer un graphe de dépendance entre les règles.
+
+    :param base_regles: base de règles
+    :param base_faits: base de faits
+    :return: ordre des règles
+        """
+    predecesseurs = dict()
+    for id in base_regles.keys() :
+        predecesseurs[id] = []
+
+    for id, regle in base_regles.items() : #Parcours de toutes les règles;
+        for attr, val in regle.get("conclusion").items() : #Pour chaque fait en conclusion d'une règle
+                
+            for id2, regle2 in base_regles.items() : #On regarde les autres règles
+                if id != id2 and (((attr,val) in regle2.get("conditions").items())): #Si une prémisse d'une règle correspond à une conséquence d'une autre règle
+                    predecesseurs[id2].append(id) #On ajoute la règle id au prédecesseur de la règle id
+                        
+    if trace : print("Prédécesseurs :", predecesseurs)
+    return predecesseurs
+
+def creer_ordre(base_regles :dict, base_faits : dict, trace : bool):
+    """
+    Créer un ordre des règles selon leurs prédécesseurs.
+
+    :param base_regles: base de règles
+    :param base_faits: base de faits
+    :return: ordre des règles
+        """
+    predecesseurs = recuperer_predecesseurs(base_regles, trace)
+
+    ordre_regles = []
+    
+    while predecesseurs : #Tant qu'il reste des règles à ordonner
+        #Groupe i récupère les règles dont les predécesseurs sont déjà validés
+        groupe = [idr for idr, preds in predecesseurs.items() if (not preds) or all((attr,val) in base_faits.items() for attr, val in base_regles.get(idr).get("conditions").items())]
+        ordre_regles.append(groupe)
+
+        if not groupe : raise ValueError("Aucune règle déclenchable : cycle détecté ou faits initiaux insuffisants") ### Voir pour ajouter fonction d'incohérence ou demande à l'expert
+
+
+        for r in groupe :
+            del predecesseurs[r] #On enlève les règles déjà ordonnées
+        for id in predecesseurs.keys() :
+            predecesseurs[id] = [p for p in predecesseurs[id] if p not in groupe] #On enlève les prédécesseurs déjà ordonnés
+
+    if trace : print("Groupes à appliquer :", ordre_regles, "\n")
+    return ordre_regles
+
+
+def appliquer_regle_pour_groupe(base_regles : dict, base_faits : dict, regle : str, trace : bool):
+    """
+    Appliquer un règle d'un groupe
+
+    :param base_regles: base des règles
+    :param base_faits: base des faits
+    :param regle: nom de la règle à appliquer
+    :param trace: trace activée ou non
+    :return: la base de faits mise à jour
+    """
+    if trace: print("Ajout des faits par application de", regle, " : ", end="")  # TRACE
+    for (attr, val) in base_regles.get(regle).get("conclusion").items():
+        base_faits[attr] = val ###Voir pour les multivaluations (chercher dans liste multival et [])
+        if trace: print("(", attr, ":", val, "), ", end="") #TRACE
+    if trace : print()
+    return base_faits
+
+def appliquer_groupe(base_regles : dict, base_faits : dict, groupe : list, trace : bool):
+    """
+    Appliquer un groupe de règle
+
+    :param base_regles: base des règles
+    :param base_faits: base des faits
+    :param groupe: groupe de règle à appliquer
+    :param trace: trace activée ou non
+    :return: la base de faits mise à jour
+    """
+    if trace : print("Application du groupe :", groupe)
+    for r in groupe :
+        eligible = True
+        for attr, val in base_regles.get(r).get("conditions").items():
+            if base_faits.get(attr) != val :
+                eligble = False
+                break
+
+        if eligible :
+            base_faits = appliquer_regle_pour_groupe(base_regles, base_faits, r, trace)
+
+    if trace : print() #Saut de ligne
+    return base_faits
+
+
+def resolution_par_groupes(base_regles : dict, base_faits :dict, but : dict | None, trace : bool = False):
+    """
+
+    :param base_regles:
+    :param base_faits:
+    :param strat:
+    :param but:
+    :param critere_tri:
+    :param trace:
+    :return:
+    """
+    if trace : print("Récap : Résolution par déclenchement de groupes de règles.\n")
+    groupes = creer_ordre(base_regles, base_faits, trace)
+    for g in groupes :
+        base_faits = appliquer_groupe(base_regles, base_faits, g, trace)
+        if but != None and base_faits.get(but.get("attribut")) == but.get("valeur") :
+            print("Succès : but trouvé")
+            return base_faits
+
+    if but != None : print("Échec : but non trouvé")
+    return base_faits
+
+
+###--- MAIN ---###
 if __name__ == "__main__":
     try:
-        cheminVersFichier = "../FichiersTest/test_ageregle_2cran.json"#input("Chemin vers le fichier json : ")
-        base_regles, base_faits = lireFichierJson(cheminVersFichier)
+        cheminVersFichier = "../FichiersTest/test2.json"#input("Chemin vers le fichier json : ")
+        base_regles, base_faits = lire_fichier_json(cheminVersFichier)
         print("LOG :",base_regles, "\n", base_faits)
+
 
         inputTrace = ""
         while inputTrace not in ["y", "n"]:
@@ -510,8 +628,26 @@ if __name__ == "__main__":
                 afficher_arbre(arbre)
 
             case "paquets" :
-                arbrePaquets = construire_arbre(base_faits, base_regles)
+                # Saturation ou objectif
+                inputBut = ""
+                while inputBut not in ["1", "2"]:
+                    inputBut = input("Quel condition d'arrêt voulez-vous utiliser ?\n"
+                                     "\t1 - Saturation\n"
+                                     "\t2 - Recherche d'un but\n"
+                                     "Choix : ")
+                match inputBut:
+                    case "1":
+                        but = None
+                    case "2":
+                        print("Veuillez donner le nom et la valeur de l'attribut objectif. (Respectez la casse)")
+                        attr = input("Nom de l'attribut : ")
+                        val = input("Valeur : ")
+                        but = {"attribut": attr, "valeur": val}
+                    case _:
+                        raise ValueError("Condition d'arrêt inconnu.")
+                """arbrePaquets = construire_arbre(base_faits, base_regles)
                 afficher_arbre_regles(arbrePaquets)
-                afficher_base_regles(base_regles)
+                afficher_base_regles(base_regles)"""
+                base_faits = resolution_par_groupes(base_regles, base_faits, but, trace)
     except Exception as e :
         print("Erreur :", e)

@@ -1,0 +1,49 @@
+{
+  "faits": {
+    "H": "true",
+    "K": "true"
+  },
+  "règles": [
+    {
+      "id": "R1",
+      "conditions": {"A": "true"},
+      "conclusion": {"E": "true"}
+    },
+    {
+      "id": "R2",
+      "conditions": {"B": "true"},
+      "conclusion": {"D": "true"}
+    },
+    {
+      "id": "R3",
+      "conditions": {"H": "true"},
+      "conclusion": {"A": "true", "F": "true"}
+    },
+    {
+      "id": "R4",
+      "conditions": {"E": "true", "G": "true"},
+      "conclusion": {"C": "true"}
+    },
+    {
+      "id": "R5",
+      "conditions": {"E": "true", "K": "true"},
+      "conclusion": {"B": "true"}
+    },
+    {
+      "id": "R6",
+      "conditions": {"D": "true", "E": "true", "K": "true"},
+      "conclusion": {"C": "true"}
+    },
+    {
+      "id": "R7",
+      "conditions": {"G": "true", "K": "true", "F": "true"},
+      "conclusion": {"A": "true"}
+    },
+    {
+      "id": "R8",
+      "conditions": {"A":  "true", "B":  "true"},
+      "conclusion" : {"H":  "true"}
+    }
+
+  ]
+}
