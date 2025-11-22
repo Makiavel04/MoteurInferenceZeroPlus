@@ -1,0 +1,22 @@
+{
+  "faits": {
+    "X": "true"
+  },
+  "règles": [
+    {
+      "id": "R1",
+      "conditions": { "X": "true" },
+      "conclusion": { "Y": "true" }
+    },
+    {
+      "id": "R2",
+      "conditions": { "Y": "true" },
+      "conclusion": { "Z": "true" }
+    },
+    {
+      "id": "R3",
+      "conditions": { "Z": "true" },
+      "conclusion": { "Y": "false" }
+    }
+  ]
+}

@@ -246,7 +246,6 @@ def regles_utilisables_car(base_regles : dict, but : dict) :
     # return regles_eligibles
     return [id for id, regle in base_regles.items() if regle.get("conclusion").get(but.get("attribut")) == but.get("valeur")]
 
-
 def chainage_arriere(base_regles : dict, base_faits :dict, but : dict, critere_tri :str = "aucun", trace : bool = False) :
     """
     Résolution par chaînage arrière
@@ -376,7 +375,6 @@ def creer_ordre(base_regles :dict, base_faits : dict, trace : bool):
     if trace : print("Groupes à appliquer :", ordre_regles, "\n")
     return ordre_regles
 
-
 def appliquer_regle_pour_groupe(base_regles : dict, base_faits : dict, regle : str, trace : bool):
     """
     Appliquer un règle d'un groupe
@@ -444,8 +442,16 @@ def resolution_par_groupes(base_regles : dict, base_faits :dict, but : dict | No
 
 
 ###--- INCOHÉRENCE ---###
-def trouver_incoherence_regles(base_regles : dict, base_faits : dict, trace : bool = False):
+def trouver_incoherence_regles(base_regles : dict, trace : bool = False):
+    """
+    Recherche d'incohérence entre les règles.
+
+    :param base_regles: base de règles
+    :param trace: trace activée / désactivée
+    :return: présence ou non d'incohérence
+    """
     ###Incohérence des règles
+    print("INCOHÉRENCE DE RÈGLES :")
     # --- Identifier les faits demandables ---
     attr_premisses = set()
     attr_conclusions = set()
@@ -499,6 +505,7 @@ def trouver_incoherence_regles(base_regles : dict, base_faits : dict, trace : bo
 
         regles_explorees.append(r)
 
+
         #Vérification de la saturation
         for attr in index_derivation.keys() :
             regle_avec_attr = []
@@ -522,7 +529,10 @@ def trouver_incoherence_regles(base_regles : dict, base_faits : dict, trace : bo
             print("Règles explorées :", regles_explorees)
             print()
 
+    if trace : print("Index des dérivations :",index_derivation)
+
     #Études des incohérences
+    incoherent = False
     for attr, val_dict in index_derivation.items() :
         if len(val_dict) > 1 : #Si on a plus de 1 valeur possible pour l'attribut, cela peut entrainer un problème de multivaluation
             valeurs = list(val_dict.keys()) #Récupère les valeurs possibles
@@ -548,68 +558,64 @@ def trouver_incoherence_regles(base_regles : dict, base_faits : dict, trace : bo
                                 break
 
                         if d1_in_d2 or d2_in_d1 :
-                            print("INCOHÉRENCE DE RÈGLES :")
+                            incoherent = True
+                            print("Règles à ajouter :", end=" ")
                             print(attr,"=",v1, " et ", attr,"=",v2, " => INCOHÉRENT")
 
+    if not incoherent : print("RAS\n")
+    return incoherent
 
-
-
-
+def trouver_incoherence_faits(base_regles : dict, base_faits: dict, trace : bool = False):
     """
-    index_attr = {attr: set() for attr in attr_conclusions}  # index des faits dérivés
-    
-    while regles_demandables:
-        regle_actuelle = regles_demandables.pop()
-        conditions = base_regles[regle_actuelle]["conditions"]
-        conclusions = base_regles[regle_actuelle]["conclusion"]
+    Vérifier la cohérence des faits en accord avec les règles.
+    Pour cela, nous utilisons des méthodes de chaînage avant en profondeur et en saturation, pour pouvoir tester la base de fait après chaque règle.
 
-        for attr, val in conclusions.items():
-            index_attr.setdefault(attr, set())
-            index_attr[attr].add(tuple(conditions.items()))  # remplacer frozenset par tuple pour hashable
-
-        # Vérifier saturation de l'attribut et ajouter aux demandables
-        for attr in conclusions.keys():
-            toutes_regles_attr = [r for r, regle in base_regles.items() if attr in regle["conclusion"]]
-            if all(tuple(base_regles[r]["conditions"].items()) in index_attr.get(attr, set())
-                   for r in toutes_regles_attr):
-                if attr not in demandables:
-                    demandables.add(attr)
-                    if trace: print(f"Attribut saturé et ajouté aux demandables : {attr}")
-                    # Ajouter de nouvelles règles devenues éligibles à regles_demandables
-                    for r, regle in base_regles.items():
-                        if r not in index_attr and all(a in demandables for a in regle["conditions"].keys()):
-                            regles_demandables.add(r)
-    # --- Détection d'incohérences implicites ---
-    incoherences = []
-    for attr, faits_indexés in index_attr.items():
-        valeurs = set()
-        for c in faits_indexés:
-            for k, v in c:
-                if k == attr:
-                    valeurs.add(v)
-        if len(valeurs) > 1:
-            incoherences.append((attr, valeurs))
-            if trace:
-                print(f"Incohérence détectée sur {attr} : {valeurs}")
-
-    return {"index": index_attr, "demandables": demandables, "incohérences": incoherences}
+    :param base_regles: base de règles
+    :param base_faits: base de faits
+    :param trace: trace activée / désactivée
+    :return: présence ou non d'incohérence
     """
-    return index_derivation
+    ###Incohérence des faits
+    print("INCOHÉRENCE DE FAITS :")
 
-
-
-def trouver_incoherence_faits():
     #Verifier la cohérence des faits après application de chaque règle
-    return True
+    br = copy.deepcopy(base_regles)
+    bf = copy.deepcopy(base_faits)
+
+    regles_eligibles = regles_utilisables_cav(br, bf)
+    while br and regles_eligibles :
+        incoherent = verifier_coherence_fait(br, bf, regles_eligibles[0], trace)#Verifier si la règle éligible que nous utilisons, ici la 1ere
+        if incoherent : return True
+        appliquer_regle_cav(regles_eligibles[0], br, bf, False) #Revient à faire un tour en profondeur (n'utilise pas direct la méthode associée pour éviter incompatibilité en cas de modifs)
+        regles_eligibles = regles_utilisables_cav(br, bf)
+
+    print("RAS\n")
+    return False
+
+def verifier_coherence_fait(base_regles : dict, base_faits : dict, idregle : str, trace : bool = False):
+    """
+    Vérifier si une règle est cohérente avec la base de faits existante
+
+    :param base_regles: base de règles
+    :param base_faits: base de faits
+    :param idregle: id de la règle avec laquelle on vérifie
+    :param trace: trace activée / désactivée
+    :return:
+    """
+    incoherent = False
+    for attr, val in base_regles.get(idregle).get("conclusion").items():
+        if (attr in base_faits.keys()) and (base_faits.get(attr)!=val):
+            print("Attribut en base:", attr, "=", base_faits.get(attr), end=". ")
+            print("La règle", idregle, "ajoute :", attr,"=",val+".", "Cela est incohérent.")
+            incoherent = True #Si un fait en conclusion de la règle est déjà en base de faits avec une valeur différente, on invalide
+    return incoherent
 
 ###--- MAIN ---###
 if __name__ == "__main__":
     try:
-        cheminVersFichier = "../FichiersTest/incoherence_regles2.json"#input("Chemin vers le fichier json : ")
+        cheminVersFichier = "../FichiersTest/incoherence_faits1.json"#input("Chemin vers le fichier json : ")
         base_regles, base_faits = lire_fichier_json(cheminVersFichier)
         print("LOG :",base_regles, "\n", base_faits)
-
-        print(trouver_incoherence_regles(base_regles, base_faits, True))
 
         inputTrace = ""
         while inputTrace not in ["y", "n"]:
@@ -617,12 +623,15 @@ if __name__ == "__main__":
         match inputTrace:
             case "n" :
                 trace = False
-                print("Trace désactivée")
+                print("Trace désactivée\n")
             case "y" :
                 trace = True
-                print("Trace activée")
+                print("Trace activée\n")
             case _ :
                 raise ValueError("Action de trace non reconnu")
+
+        if trouver_incoherence_regles(base_regles, trace) or trouver_incoherence_faits(base_regles, base_faits, trace) :
+            raise ValueError("Incohérence détectée, veuillez modifier votre modèle.")
 
         inputTypeRecherche = ""
         while inputTypeRecherche not in ["1","2","3"]:
