@@ -1,0 +1,125 @@
+{
+  "faits": {},
+
+  "règles": [
+    {
+      "id": "R1",
+      "conditions": {"A": "true"},
+      "conclusion": {"B": "true"}
+    },
+
+    {
+      "id": "R2",
+      "conditions": {"A": "true"},
+      "conclusion": {"B": "false"}
+    },
+
+    {
+      "id": "R3",
+      "conditions": {"X": "1"},
+      "conclusion": {"Y": "alpha"}
+    },
+
+    {
+      "id": "R4",
+      "conditions": {"X": "1"},
+      "conclusion": {"Y": "beta"}
+    },
+
+    {
+      "id": "R5",
+      "conditions": {"P": "true"},
+      "conclusion": {"Q": "true", "R": "true"}
+    },
+
+    {
+      "id": "R6",
+      "conditions": {"S": "true"},
+      "conclusion": {"Q": "false"}
+    },
+
+    {
+      "id": "R7",
+      "conditions": {"R": "true", "T": "true"},
+      "conclusion": {"U": "true"}
+    },
+
+    {
+      "id": "R8",
+      "conditions": {"V": "true"},
+      "conclusion": {"T": "true", "W": "true"}
+    },
+
+    {
+      "id": "R9",
+      "conditions": {"W": "true"},
+      "conclusion": {"U": "false"}
+    },
+
+    {
+      "id": "R10",
+      "conditions": {"M": "true"},
+      "conclusion": {"N": "true"}
+    },
+
+    {
+      "id": "R11",
+      "conditions": {"N": "true"},
+      "conclusion": {"M": "false"}
+    },
+
+    {
+      "id": "R12",
+      "conditions": {"E": "true"},
+      "conclusion": {"B": "true", "Z": "1"}
+    },
+
+    {
+      "id": "R13",
+      "conditions": {"F": "true"},
+      "conclusion": {"B": "false", "Z": "2"}
+    },
+
+    {
+      "id": "R14",
+      "conditions": {"E": "true", "F": "true"},
+      "conclusion": {"C": "true"}
+    },
+
+    {
+      "id": "R15",
+      "conditions": {"G": "true"},
+      "conclusion": {"C": "false"}
+    },
+
+    {
+      "id": "R16",
+      "conditions": {"H": "true"},
+      "conclusion": {"I": "v1"}
+    },
+
+    {
+      "id": "R17",
+      "conditions": {"I": "v1"},
+      "conclusion": {"H": "false"}
+    },
+
+    {
+      "id": "R18",
+      "conditions": {"U": "true"},
+      "conclusion": {"L": "true"}
+    },
+
+    {
+      "id": "R19",
+      "conditions": {"L": "true", "P": "true"},
+      "conclusion": {"S": "true"}
+    },
+
+    {
+      "id": "R20",
+      "conditions": {"Z": "2"},
+      "conclusion": {"Q": "true"}
+    }
+  ]
+}

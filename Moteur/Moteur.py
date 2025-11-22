@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import copy
 import json
-from collections import OrderedDict
+from itertools import product
 
 
 
@@ -326,93 +326,6 @@ def afficher_arbre(arbre, prefix=""):
         
         
 ###--- CHAINAGE PAR PAQUETS ---###
-
-def construire_arbre(base_faits: dict, base_regles: dict):
-    """
-    Construire un arbre de dépendances entre règles.
-    Une règle enfant est liée à un parent si au moins une de ses prémisses
-    correspond à une conséquence du parent.
-    Seules les règles directement applicables (toutes conditions satisfaites par la base de faits) sont racines.
-    """
-
-    def arbre_depuis_regle(reg_id, regles_restantes):
-        arbre = {"Règle": reg_id, "Enfants": []}
-        consequences_parent = regles_restantes[reg_id]["conclusion"]
-
-        for enfant_id, regle in regles_restantes.items():
-            if enfant_id == reg_id:
-                continue
-            conditions_enfant = regle.get("conditions", {})
-            # lien parent -> enfant si au moins une prémisse correspond à une conséquence
-            if any(fait in conditions_enfant and conditions_enfant[fait] == val
-                   for fait, val in consequences_parent.items()):
-                arbre["Enfants"].append(arbre_depuis_regle(enfant_id, regles_restantes))
-
-        return arbre
-
-    # Règles racines : toutes les conditions satisfaites par la base de faits
-    racines = [
-        reg_id for reg_id, regle in base_regles.items()
-        if all(fait in base_faits and base_faits[fait] == val
-               for fait, val in regle.get("conditions", {}).items())
-    ]
-
-    arbre_racine = {"Règle": None, "Enfants": []}
-    for reg_id in racines:
-        arbre_racine["Enfants"].append(arbre_depuis_regle(reg_id, base_regles))
-
-    return arbre_racine
-
-
-
-
-
-def afficher_arbre_regles(arbre, prefix=""):
-    """
-    Affiche l'arbre des règles de manière hiérarchique.
-
-    :param arbre: dictionnaire {"Règle": id, "Enfants": [...]}
-    :param prefix: chaîne pour indentation (utilisée en récursion)
-    """
-    regle = arbre.get("Règle")
-    if regle is None:
-        print(f"{prefix}- Racine")
-    else:
-        print(f"{prefix}- {regle}")
-
-    enfants = arbre.get("Enfants", [])
-    for i, enfant in enumerate(enfants):
-        # Gestion des branches graphiques ├─ et └─
-        if i == len(enfants) - 1:
-            new_prefix = prefix + "   └─ "
-        else:
-            new_prefix = prefix + "   ├─ "
-        afficher_arbre_regles(enfant, prefix=new_prefix)
-
-def afficher_base_regles(base_regles: dict):
-    """
-    Affiche proprement la base de règles sous forme lisible.
-    """
-    print("\n=== BASE DES RÈGLES ===\n")
-
-    for reg_id, reg in base_regles.items():
-        print(f"• {reg_id}")
-        print("   Conditions :")
-
-        if reg["conditions"]:
-            for fait, valeur in reg["conditions"].items():
-                print(f"       - {fait} = {valeur}")
-        else:
-            print("       (aucune)")
-
-        print("   Conclusion :")
-        for fait, valeur in reg["conclusion"].items():
-            print(f"       → {fait} = {valeur}")
-
-        print()  # ligne vide entre les règles
-
-
-
 def recuperer_predecesseurs(base_regles :dict, trace : bool):
     """
     Créer un graphe de dépendance entre les règles.
@@ -496,7 +409,7 @@ def appliquer_groupe(base_regles : dict, base_faits : dict, groupe : list, trace
         eligible = True
         for attr, val in base_regles.get(r).get("conditions").items():
             if base_faits.get(attr) != val :
-                eligble = False
+                eligible = False
                 break
 
         if eligible :
@@ -508,6 +421,7 @@ def appliquer_groupe(base_regles : dict, base_faits : dict, groupe : list, trace
 
 def resolution_par_groupes(base_regles : dict, base_faits :dict, but : dict | None, trace : bool = False):
     """
+    Résolution de l'objectif par application de groupe de règles
 
     :param base_regles:
     :param base_faits:
@@ -529,13 +443,173 @@ def resolution_par_groupes(base_regles : dict, base_faits :dict, but : dict | No
     return base_faits
 
 
+###--- INCOHÉRENCE ---###
+def trouver_incoherence_regles(base_regles : dict, base_faits : dict, trace : bool = False):
+    ###Incohérence des règles
+    # --- Identifier les faits demandables ---
+    attr_premisses = set()
+    attr_conclusions = set()
+    for (idr, regle) in base_regles.items() :
+        attr_premisses.update(regle.get("conditions").keys()) #Tous les attributs en conditions qui ne sont pas déjà dans le set y sont ajoutés
+        attr_conclusions.update(regle.get("conclusion").keys())
+    demandables = attr_premisses - attr_conclusions
+    if trace: print("Attributs demandables :", demandables)
+
+    # --- Identifier les règles dont toutes les prémisses sont demandables ---
+    regles_demandables = set()
+    for (idr, regle) in base_regles.items():
+        if all(attr in demandables for attr in regle.get("conditions").keys()): #Récupère toutes les règles qui n'ont que des attributs demandables en prémisse.
+            regles_demandables.add(idr)
+    if trace: print("Règles initiales à considérer :", regles_demandables)
+
+    # --- Propagation et indexation ---
+    index_derivation = {attr : dict() for attr in attr_conclusions}#Index de tous les attributs non demandables
+    for idr, regle in base_regles.items() :
+        for attr, val in regle.get("conclusion").items(): #Pour chaque attribut, on définit un dico avec les valeurs possibles
+            index_derivation[attr][val] = [] #Pour chaque valeur on prévoit une liste avec ses dérivations.
+    #Dico avec chaque attr et un sous dico de valeur qui contient toutes les dérivations
+    regles_explorees = []
+
+    while regles_demandables :
+        r = regles_demandables.pop()
+        if trace : print("Exploration de", r)
+
+        #Calcul de la dérivation de la règle
+        premisses_r = base_regles.get(r).get("conditions")
+        derivations = [dict()]
+        for attr_p, val_p in premisses_r.items():
+            if index_derivation.get(attr_p) : # Si l'élément est un élément qui a été dérivé, on récupère ses dérivations
+                new_deriv = []
+                for d in index_derivation.get(attr_p).get(val_p): #Pour chaque dérivation possible de l'attribut
+                    for d2 in derivations : #On l'ajoute aux dérivations existantes
+                        tmp = copy.deepcopy(d2)
+                        for a, v in d.items() :
+                            tmp[a] = v
+                        new_deriv.append(tmp)
+                derivations = copy.deepcopy(new_deriv)
+
+            else :# Sinon c'est un élément demandable et on le met tel quel
+                for i in range(0, len(derivations)):
+                    derivations[i][attr_p] = val_p
+
+        conclusion_r = base_regles.get(r).get("conclusion")
+        for attr_c, val_c in conclusion_r.items():
+
+            index_derivation.get(attr_c).get(val_c).extend(derivations) #Ajoute la dérivation de la règle à tous les (attribut, valeur) en conclusion
+
+        regles_explorees.append(r)
+
+        #Vérification de la saturation
+        for attr in index_derivation.keys() :
+            regle_avec_attr = []
+            for idr, regle in base_regles.items() :
+                if attr in regle.get("conclusion").keys() : regle_avec_attr.append(idr)#Récupère toutes les règles concluant sur un attribut.
+
+            if not(attr in demandables) and all(r in regles_explorees for r in regle_avec_attr) :
+                demandables.add(attr)
+                if trace : print("Attribut saturé :", attr)
+
+
+        #Ajout des règles qui sont maintenant utilisables
+        for idr, regle in base_regles.items() :
+            if not(idr in regles_explorees) and all(attr in demandables for attr in regle.get("conditions").keys()): #Récupère toutes les règles qui n'ont que des attributs demandables en prémisse.
+                regles_demandables.add(idr)
+                if trace : print("Règle ajoutée :", idr)
+
+        if trace :
+            print("Demandables :", demandables)
+            print("Règles demandables :", regles_demandables)
+            print("Règles explorées :", regles_explorees)
+            print()
+
+    #Études des incohérences
+    for attr, val_dict in index_derivation.items() :
+        if len(val_dict) > 1 : #Si on a plus de 1 valeur possible pour l'attribut, cela peut entrainer un problème de multivaluation
+            valeurs = list(val_dict.keys()) #Récupère les valeurs possibles
+            for i in range(0, len(valeurs)):
+                v1 = valeurs[i] #Récupère une valeur
+                liste_deriv1 = val_dict[v1] #et la liste des dérivations associées
+                for j in range(i+1, len(valeurs)):
+                    v2 = valeurs[j]
+                    liste_deriv2 = val_dict[v2]
+
+                    for (d1, d2) in product(liste_deriv1, liste_deriv2):#teste toutes les combinaisons de dérivations
+
+                        d1_in_d2 = True
+                        for k in d1.keys():
+                            if not(k in d2.keys()) or d1.get(k) != d2.get(k):
+                                d1_in_d2 = False
+                                break
+
+                        d2_in_d1 = True
+                        for k in d2.keys():
+                            if not (k in d1.keys()) or d2.get(k) != d1.get(k):
+                                d2_in_d1 = False
+                                break
+
+                        if d1_in_d2 or d2_in_d1 :
+                            print("INCOHÉRENCE DE RÈGLES :")
+                            print(attr,"=",v1, " et ", attr,"=",v2, " => INCOHÉRENT")
+
+
+
+
+
+    """
+    index_attr = {attr: set() for attr in attr_conclusions}  # index des faits dérivés
+    
+    while regles_demandables:
+        regle_actuelle = regles_demandables.pop()
+        conditions = base_regles[regle_actuelle]["conditions"]
+        conclusions = base_regles[regle_actuelle]["conclusion"]
+
+        for attr, val in conclusions.items():
+            index_attr.setdefault(attr, set())
+            index_attr[attr].add(tuple(conditions.items()))  # remplacer frozenset par tuple pour hashable
+
+        # Vérifier saturation de l'attribut et ajouter aux demandables
+        for attr in conclusions.keys():
+            toutes_regles_attr = [r for r, regle in base_regles.items() if attr in regle["conclusion"]]
+            if all(tuple(base_regles[r]["conditions"].items()) in index_attr.get(attr, set())
+                   for r in toutes_regles_attr):
+                if attr not in demandables:
+                    demandables.add(attr)
+                    if trace: print(f"Attribut saturé et ajouté aux demandables : {attr}")
+                    # Ajouter de nouvelles règles devenues éligibles à regles_demandables
+                    for r, regle in base_regles.items():
+                        if r not in index_attr and all(a in demandables for a in regle["conditions"].keys()):
+                            regles_demandables.add(r)
+    # --- Détection d'incohérences implicites ---
+    incoherences = []
+    for attr, faits_indexés in index_attr.items():
+        valeurs = set()
+        for c in faits_indexés:
+            for k, v in c:
+                if k == attr:
+                    valeurs.add(v)
+        if len(valeurs) > 1:
+            incoherences.append((attr, valeurs))
+            if trace:
+                print(f"Incohérence détectée sur {attr} : {valeurs}")
+
+    return {"index": index_attr, "demandables": demandables, "incohérences": incoherences}
+    """
+    return index_derivation
+
+
+
+def trouver_incoherence_faits():
+    #Verifier la cohérence des faits après application de chaque règle
+    return True
+
 ###--- MAIN ---###
 if __name__ == "__main__":
     try:
-        cheminVersFichier = "../FichiersTest/test2.json"#input("Chemin vers le fichier json : ")
+        cheminVersFichier = "../FichiersTest/incoherence_regles2.json"#input("Chemin vers le fichier json : ")
         base_regles, base_faits = lire_fichier_json(cheminVersFichier)
         print("LOG :",base_regles, "\n", base_faits)
 
+        print(trouver_incoherence_regles(base_regles, base_faits, True))
 
         inputTrace = ""
         while inputTrace not in ["y", "n"]:

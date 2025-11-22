@@ -37,8 +37,7 @@
     {
       "id": "R7",
       "conditions": {"G": "true", "K": "true", "F": "true"},
-      "conclusion": {"A": "true"}
+      "conclusion": {"A": "false"}
     }
-
   ]
 }

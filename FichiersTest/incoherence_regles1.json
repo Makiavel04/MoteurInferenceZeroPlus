@@ -1,0 +1,59 @@
+{
+    "faits": {},
+
+    "règles": [
+        {
+            "id": "R1",
+            "conditions": { "A": "true" },
+            "conclusion": { "B": "true", "H": "true" }
+        },
+
+        {
+            "id": "R2",
+            "conditions": { "B": "true" },
+            "conclusion": { "C": "true", "H": "true" }
+        },
+
+        {
+            "id": "R3",
+            "conditions": { "C": "true" },
+            "conclusion": { "A": "false" }
+        },
+
+        {
+            "id": "R4",
+            "conditions": { "A": "true" },
+            "conclusion": { "B": "false" }
+        },
+
+        {
+            "id": "R5",
+            "conditions": { "D": "true", "H": "true" },
+            "conclusion": { "C": "false" }
+        },
+
+        {
+            "id": "R6",
+            "conditions": { "C": "false" },
+            "conclusion": { "A": "true" }
+        },
+
+        {
+            "id": "R7",
+            "conditions": { "E": "true" },
+            "conclusion": { "B": "true", "H": "true" }
+        },
+
+        {
+            "id": "R8",
+            "conditions": { "E": "true" },
+            "conclusion": { "B": "false", "G": "true" }
+        },
+
+        {
+            "id": "R9",
+            "conditions": { "G": "true" },
+            "conclusion": { "A": "true" }
+        }
+    ]
+}
