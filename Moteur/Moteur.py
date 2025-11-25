@@ -5,7 +5,6 @@ import json
 from itertools import product
 
 
-
 def lire_fichier_json(filename : str) :
     """
     Lire un fichier .json contenant base de faits et de règles
@@ -20,6 +19,22 @@ def lire_fichier_json(filename : str) :
     base_regles : dict = {r["id"] : {k : v for k,v in r.items() if k!="id"} for r in data["règles"]}# Redécoupe le dico en mettant l'id en cle général
     
     return base_regles,base_faits
+
+def ajout_fait(base_faits : dict, attr: str, val : str):
+    """
+    Ajout d'un fait à la base. Lève une erreur si le fait y est déjà
+
+    :param base_faits: base de faits
+    :param attr: attribut à ajouter
+    :param val: valeur de l'attribut
+    :return: base de faits mise à jour
+    """
+    if attr in base_faits.keys():
+        raise ValueError(f"ajout_fait : Ajout de {attr}={val} à la base de faits, alors qu'il y déjà {attr}={old}.")
+    else :
+        base_faits[attr] = val
+
+    return base_faits
 
 
 ###--- TRIE DES REGLES ---###
@@ -94,7 +109,7 @@ def appliquer_regle_cav(regle : dict, base_regles :dict, base_faits : dict, trac
 
     # Appliquer la règle et mettre à jour la base de fait
     for fait, val in base_regles.get(regle).get("conclusion").items():
-        base_faits[fait] = val  ### à l'ajout de conséquence dans base de fait, on peut verif si existe deja et transformer en liste de val ou planter
+        ajout_fait(base_faits, fait, val)
         if trace: print("(", fait, ":", val, "), ", end="") #TRACE
 
     # Retirer la règle utilisée de la base de règles disponibles
@@ -149,7 +164,7 @@ def chainage_avant(base_regles : dict, base_faits :dict, strat : str, but : dict
 
     print("Récap : \n", "chaînage avant en "+strat+"\n", "critère de résolution des conflits : "+critere_tri+"\n")
 
-    while br and regles_eligibles and (but is None or bf.get(but.get("attribut")) != but.get("valeur")): #tant qu'il reste des règles à appliquer ou si on a atteint l'objectif
+    while br and regles_eligibles and ((but is None) or (bf.get(but.get("attribut")) != but.get("valeur"))): #tant qu'il reste des règles à appliquer ou si on a atteint l'objectif
 
         #Tri des règles
         match critere_tri :
@@ -343,7 +358,7 @@ def appliquer_regle_pour_groupe(base_regles : dict, base_faits : dict, regle : s
     """
     if trace: print("Ajout des faits par application de", regle, " : ", end="")  # TRACE
     for (attr, val) in base_regles.get(regle).get("conclusion").items():
-        base_faits[attr] = val ###Voir pour les multivaluations (chercher dans liste multival et [])
+        ajout_fait(base_faits, attr, val)
         if trace: print("(", attr, ":", val, "), ", end="") #TRACE
     if trace : print()
     return base_faits
@@ -485,7 +500,8 @@ def trouver_incoherence_regles(base_regles : dict, trace : bool = False):
             print("Règles explorées :", regles_explorees)
             print()
 
-    if trace : print("Index des dérivations :",index_derivation)
+    if trace :
+        print("Index des dérivations :",index_derivation,"\n")
 
     #Études des incohérences
     incoherent = False
@@ -519,9 +535,7 @@ def trouver_incoherence_regles(base_regles : dict, trace : bool = False):
                             #Ajout multivaluation en tableau. pour verif car ici, on ecrase quand on change une val. => Pas de possibilite d'avoir 2 fois la meme clé dans un dico.
 
                             incoherent = True
-                            print("Les combinaisons de faits demandables suivant concluent sur une multivaluation :", d1,",",d2)
-                            print("Revoyer les règles :",end="")#print("Règles à ajouter :", end=" ")
-                            print(attr,"=",v1, " et ", attr,"=",v2, " => INCOHÉRENT")
+                            print(f"ATTENTION : {d1} et {d2} concluent sur des valeurs différentes pour un même attribut => {attr}={v1} et {attr}={v2} est INCOHÉRENT")
 
     if not incoherent : print("RAS\n")
     return incoherent
@@ -547,7 +561,9 @@ def trouver_incoherence_faits(base_regles : dict, base_faits: dict, trace : bool
     while br and regles_eligibles :
         incoherent = verifier_coherence_fait(br, bf, regles_eligibles[0], trace)#Verifier si la règle éligible que nous utilisons, ici la 1ere
         if incoherent : return True
-        appliquer_regle_cav(regles_eligibles[0], br, bf, False) #Revient à faire un tour en profondeur (n'utilise pas direct la méthode associée pour éviter incompatibilité en cas de modifs)
+
+        appliquer_regle_cav(regles_eligibles[0], br, bf, False) #Revient à faire un tour en profondeur
+
         regles_eligibles = regles_utilisables_cav(br, bf)
 
     print("RAS\n")
@@ -574,7 +590,7 @@ def verifier_coherence_fait(base_regles : dict, base_faits : dict, idregle : str
 ###--- MAIN ---###
 if __name__ == "__main__":
     try:
-        cheminVersFichier = "../FichiersTest/incoherence_regles1.json"#input("Chemin vers le fichier json : ")
+        cheminVersFichier = "../FichiersTest/incoherence_faits1.json"#input("Chemin vers le fichier json : ")
         base_regles, base_faits = lire_fichier_json(cheminVersFichier)
         print("LOG :",base_regles, "\n", base_faits)
 
@@ -588,11 +604,24 @@ if __name__ == "__main__":
             case "y" :
                 trace = True
                 print("Trace activée\n")
-            case _ :
-                raise ValueError("Action de trace non reconnu")
 
-        if trouver_incoherence_regles(base_regles, trace) or trouver_incoherence_faits(base_regles, base_faits, trace) :
-            raise ValueError("Incohérence détectée, veuillez modifier votre modèle.")
+        inco_regles = trouver_incoherence_regles(base_regles, trace)
+        inco_faits = trouver_incoherence_faits(base_regles, base_faits, trace)
+
+
+        if inco_faits:
+            raise ValueError("FAITS : Incohérence dans la base de faits. Erreur fatal.")
+        if inco_regles:
+            print("Il y a une incohérence dans la base de règles selon certains faits demandables. (Voir section INCOHÉRENCE RÈGLES)")
+            inputIncoRegle = ""
+            while inputIncoRegle not in ["y", "n"]:
+                inputIncoRegle = input("Si vous êtes sur que cela ne perturbe pas votre execution, car vous n'avez pas ces valeurs, vous pouvez continuer si vous voulez : [y/n]")
+
+            match inputIncoRegle :
+                case "y" : pass
+                case "n" : raise ValueError("RÈGLES : Arrêt demandé car incohérence de règle")
+
+
 
         inputTypeRecherche = ""
         while inputTypeRecherche not in ["1","2","3"]:
