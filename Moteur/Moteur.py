@@ -23,50 +23,6 @@ def lire_fichier_json(filename : str) :
 
 
 ###--- TRIE DES REGLES ---###
-"""def trier_regles(base_regles: dict, base_faits: dict, type_tri: str):
-    Trie les règles et renvoie un dictionnaire trié, même structure que base_regles.
-
-    # Convertir les règles en liste pour les trier
-    regles_liste = [
-        {"id": rid, 
-         "conditions": r["conditions"], 
-         "conclusion": r["conclusion"]}
-        for rid, r in base_regles.items()
-    ]
-
-    # ----------------------------- TRI 1 : Plus de prémisses -----------------------------
-    if type_tri == "0":
-        regles_liste.sort(key=lambda r: len(r["conditions"]), reverse=True)
-
-    # ----------------------------- TRI 2 : Faits récents -----------------------------
-    elif type_tri == "1":
-        faits_ordonnes = list(base_faits.items())
-        index_fait = {(k, v): i for i, (k, v) in enumerate(faits_ordonnes)}
-
-        def priorite(regle):
-            indices = [
-                index_fait[(fait, val)]
-                for fait, val in regle["conditions"].items()
-                if (fait, val) in index_fait
-            ]
-            return max(indices) if indices else -1
-
-        regles_liste.sort(key=priorite, reverse=True)
-
-    else:
-        raise ValueError(f"Type de tri inconnu : {type_tri}")
-
-    # ----------------------------- RECONSTRUCTION EN DICTIONNAIRE -----------------------------
-    base_regles_triees = OrderedDict()
-
-    for r in regles_liste:
-        base_regles_triees[r["id"]] = {
-            "conditions": r["conditions"],
-            "conclusion": r["conclusion"]
-        }
-
-    return base_regles_triees"""
-
 def tri_regles_par_anciennete(liste_regles : list, base_regles : dict, base_faits : dict, recent : bool = True):
     """
     Tri les règles par ancienneté des prémisses
@@ -558,8 +514,13 @@ def trouver_incoherence_regles(base_regles : dict, trace : bool = False):
                                 break
 
                         if d1_in_d2 or d2_in_d1 :
+                            #Si déjà une règle sur cette incohérence : SKIP
+                            regle_presente = False
+                            #Ajout multivaluation en tableau. pour verif car ici, on ecrase quand on change une val. => Pas de possibilite d'avoir 2 fois la meme clé dans un dico.
+
                             incoherent = True
-                            print("Règles à ajouter :", end=" ")
+                            print("Les combinaisons de faits demandables suivant concluent sur une multivaluation :", d1,",",d2)
+                            print("Revoyer les règles :",end="")#print("Règles à ajouter :", end=" ")
                             print(attr,"=",v1, " et ", attr,"=",v2, " => INCOHÉRENT")
 
     if not incoherent : print("RAS\n")
@@ -613,7 +574,7 @@ def verifier_coherence_fait(base_regles : dict, base_faits : dict, idregle : str
 ###--- MAIN ---###
 if __name__ == "__main__":
     try:
-        cheminVersFichier = "../FichiersTest/incoherence_faits1.json"#input("Chemin vers le fichier json : ")
+        cheminVersFichier = "../FichiersTest/incoherence_regles1.json"#input("Chemin vers le fichier json : ")
         base_regles, base_faits = lire_fichier_json(cheminVersFichier)
         print("LOG :",base_regles, "\n", base_faits)
 
