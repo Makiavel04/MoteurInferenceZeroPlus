@@ -530,10 +530,6 @@ def trouver_incoherence_regles(base_regles : dict, trace : bool = False):
                                 break
 
                         if d1_in_d2 or d2_in_d1 :
-                            #Si déjà une règle sur cette incohérence : SKIP
-                            regle_presente = False
-                            #Ajout multivaluation en tableau. pour verif car ici, on ecrase quand on change une val. => Pas de possibilite d'avoir 2 fois la meme clé dans un dico.
-
                             incoherent = True
                             print(f"ATTENTION : {d1} et {d2} concluent sur des valeurs différentes pour un même attribut => {attr}={v1} et {attr}={v2} est INCOHÉRENT")
 
