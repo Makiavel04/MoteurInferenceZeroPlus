@@ -30,7 +30,7 @@ def ajout_fait(base_faits : dict, attr: str, val : str):
     :return: base de faits mise à jour
     """
     if attr in base_faits.keys() and base_faits.get(attr) != val:
-            raise ValueError(f"ajout_fait : Ajout de {attr}={val} à la base de faits, alors qu'il y déjà {attr}={base_faits[val]}.")
+            raise ValueError(f"ajout_fait : Ajout de {attr}={val} à la base de faits, alors qu'il y déjà {attr}={base_faits.get(val)}.")
     else :
         base_faits[attr] = val
 
