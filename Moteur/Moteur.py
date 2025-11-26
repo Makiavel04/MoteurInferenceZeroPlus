@@ -243,15 +243,13 @@ def chainage_arriere(base_regles : dict, base_faits :dict, but : dict, critere_t
         case "aucun": pass
         case "nbpremisses_croiss": regles_eligibles = tri_regles_par_nbpremisses(regles_eligibles, base_regles,False)  # Tri par Nombre de prémisses croissant
         case "nbpremisses_decroiss": regles_eligibles = tri_regles_par_nbpremisses(regles_eligibles, base_regles,True)  # Tri par Nombre de prémisses décroissant
-        case "premisse_rec": regles_eligibles = tri_regles_par_anciennete(regles_eligibles, base_regles, base_faits, True) #Tri par prémisses les plus récentes
-        case "premisse_anc" : regles_eligibles = tri_regles_par_anciennete(regles_eligibles, base_regles, base_faits, False)  # -------------------------- anciens
         case _: raise ValueError("Critère de tri inexistant.")
 
     for idregle in regles_eligibles :
         #Tri / Critère de résolution de conflits (non def pour l'instant)
         br = copy.deepcopy(base_regles) #Refait une copie à chaque fois pour en supprimer la règle actuelle
         conditions = br.get(idregle).get("conditions")
-        del br[idregle]
+        #del br[idregle]
         enfants = []  # On initialise les enfants pour cet essai de règle seulement
 
         #Remonté de la règle
@@ -586,7 +584,6 @@ if __name__ == "__main__":
     try:
         cheminVersFichier = input("Chemin vers le fichier json : ")
         base_regles, base_faits = lire_fichier_json(cheminVersFichier)
-        print("LOG :",base_regles, "\n", base_faits)
 
         inputTrace = ""
         while inputTrace not in ["y", "n"]:
@@ -598,10 +595,13 @@ if __name__ == "__main__":
             case "y" :
                 trace = True
                 print("Trace activée\n")
+        if trace :
+            print("Base de faits :", base_faits)
+            print("Base de règles :", base_regles)
+
 
         inco_regles = trouver_incoherence_regles(base_regles, trace)
         inco_faits = trouver_incoherence_faits(base_regles, base_faits, trace)
-
 
         if inco_faits:
             raise ValueError("FAITS : Incohérence dans la base de faits. Erreur fatal.")
@@ -665,7 +665,7 @@ if __name__ == "__main__":
                 inputCritere = ""
                 while inputCritere not in ["0", "1", "2", "3", "4", "5"]:
                     inputCritere = input("Quel critère souhaitez-vous appliquer pour la résolution de conflit dans le choix de la règle à explorer ?\n"
-                    "\t0 - Aucun (utilise l'ordre des règles dans la base de faits)\n"
+                    "\t0 - Aucun (utilise l'ordre des règles dans la base de règles)\n"
                     "\t1 - Nombre de prémisses croissant\n"
                     "\t2 - Nombre de prémisses décroissant\n"
                     "\t3 - Comportant les prémisses les plus récentes\n"
@@ -689,7 +689,27 @@ if __name__ == "__main__":
                 val = input("Valeur : ")
                 but = {"attribut" : attr, "valeur" : val}
 
-                etat, arbre = chainage_arriere(base_regles, base_faits, but, critere_tri="aucun", trace=trace)
+                # Choix du critère de résolution de conflit
+                inputCritere = ""
+                while inputCritere not in ["0", "1", "2"]:
+                    inputCritere = input(
+                        "Quel critère souhaitez-vous appliquer pour la résolution de conflit dans le choix de la règle à explorer ?\n"
+                        "\t0 - Aucun (utilise l'ordre des règles dans la base de règles)\n"
+                        "\t1 - Nombre de prémisses croissant\n"
+                        "\t2 - Nombre de prémisses décroissant\n"
+                        "Choix : ")
+
+                match inputCritere:
+                    case "0":
+                        critere = "aucun"
+                    case "1":
+                        critere = "nbpremisses_croiss"
+                    case "2":
+                        critere = "nbpremisses_decroiss"
+                    case _:
+                        raise ValueError("Critère de résolution de conflit inconnu")
+
+                etat, arbre = chainage_arriere(base_regles, base_faits, but, critere_tri=critere, trace=trace)
                 if etat : print("Succès")
                 else : print("Échec")
                 afficher_arbre(arbre)

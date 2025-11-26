@@ -6,7 +6,7 @@
 
   "règles" : [
     {
-      "id" :  "",
+      "id" :  "R1",
       "conditions" : {
         "attribut1": "val1",
         "attribut2": "val2"

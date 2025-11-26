@@ -64,20 +64,5 @@
         "power": "on"
       }
     }
-  ],
-
-  "paquets": [
-    {
-      "nom": "P1_Activation",
-      "regles": ["R1", "R4"]
-    },
-    {
-      "nom": "P2_Temperature",
-      "regles": ["R1bis", "R3"]
-    },
-    {
-      "nom": "P3_Probleme",
-      "regles": ["R2"]
-    }
   ]
 }
