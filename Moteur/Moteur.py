@@ -712,9 +712,6 @@ if __name__ == "__main__":
                         but = {"attribut": attr, "valeur": val}
                     case _:
                         raise ValueError("Condition d'arrêt inconnu.")
-                """arbrePaquets = construire_arbre(base_faits, base_regles)
-                afficher_arbre_regles(arbrePaquets)
-                afficher_base_regles(base_regles)"""
                 base_faits = resolution_par_groupes(base_regles, base_faits, but, trace)
     except Exception as e :
         print("Erreur :", e)
