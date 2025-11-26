@@ -571,7 +571,7 @@ def verifier_coherence_fait(base_regles : dict, base_faits : dict, idregle : str
     :param base_faits: base de faits
     :param idregle: id de la règle avec laquelle on vérifie
     :param trace: trace activée / désactivée
-    :return:
+    :return: présence ou non d'incohérence
     """
     incoherent = False
     for attr, val in base_regles.get(idregle).get("conclusion").items():
@@ -584,7 +584,7 @@ def verifier_coherence_fait(base_regles : dict, base_faits : dict, idregle : str
 ###--- MAIN ---###
 if __name__ == "__main__":
     try:
-        cheminVersFichier = "FichiersTest/test_plusieursreglepartour.json"#input("Chemin vers le fichier json : ")
+        cheminVersFichier = input("Chemin vers le fichier json : ")
         base_regles, base_faits = lire_fichier_json(cheminVersFichier)
         print("LOG :",base_regles, "\n", base_faits)
 
