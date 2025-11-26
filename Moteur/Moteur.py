@@ -29,8 +29,8 @@ def ajout_fait(base_faits : dict, attr: str, val : str):
     :param val: valeur de l'attribut
     :return: base de faits mise à jour
     """
-    if attr in base_faits.keys():
-        raise ValueError(f"ajout_fait : Ajout de {attr}={val} à la base de faits, alors qu'il y déjà {attr}={old}.")
+    if attr in base_faits.keys() and base_faits.get(attr) != val:
+            raise ValueError(f"ajout_fait : Ajout de {attr}={val} à la base de faits, alors qu'il y déjà {attr}={base_faits[val]}.")
     else :
         base_faits[attr] = val
 
@@ -561,9 +561,7 @@ def trouver_incoherence_faits(base_regles : dict, base_faits: dict, trace : bool
     while br and regles_eligibles :
         incoherent = verifier_coherence_fait(br, bf, regles_eligibles[0], trace)#Verifier si la règle éligible que nous utilisons, ici la 1ere
         if incoherent : return True
-
         appliquer_regle_cav(regles_eligibles[0], br, bf, False) #Revient à faire un tour en profondeur
-
         regles_eligibles = regles_utilisables_cav(br, bf)
 
     print("RAS\n")
@@ -590,7 +588,7 @@ def verifier_coherence_fait(base_regles : dict, base_faits : dict, idregle : str
 ###--- MAIN ---###
 if __name__ == "__main__":
     try:
-        cheminVersFichier = "../FichiersTest/incoherence_faits1.json"#input("Chemin vers le fichier json : ")
+        cheminVersFichier = "FichiersTest/test_plusieursreglepartour.json"#input("Chemin vers le fichier json : ")
         base_regles, base_faits = lire_fichier_json(cheminVersFichier)
         print("LOG :",base_regles, "\n", base_faits)
 

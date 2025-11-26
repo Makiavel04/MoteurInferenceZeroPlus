@@ -71,6 +71,7 @@ par :
 if not condition_satisfaite(bf, attr, val):
 
 Et ça suffit.
+
 🚀 3) Résultat
 
 Après cette modification, ton moteur pourra gérer des règles comme :
